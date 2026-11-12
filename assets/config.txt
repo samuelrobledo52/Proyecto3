@@ -1,0 +1,130 @@
+# Proyecto 3 - configuracion (clave = valor). F5 recarga en vivo.
+
+seed = 7
+
+# Nave: modo crucero
+ship.scale = 0.3
+ship.accel = 14
+ship.brake = 22
+ship.reverse = 0.25
+ship.max_speed = 45
+ship.turbo = 2.5
+ship.turn_rate = 1.4
+ship.turn_response = 4
+ship.drag = 0.25
+ship.grip = 1.2
+ship.approach = 1.5
+ship.min_speed = 8
+# margin: holgura minima sobre el terreno; nose: largo de la punta, se suma
+# segun cuanto apunte la nave hacia el suelo (|cos|)
+ship.margin = 0.6
+ship.nose = 1.0
+
+# Gravedad: a = gravity * masa / max(d, radio)^2
+gravity = 0.5
+sun.mass = 6000
+
+# Orbita local (range y suggest_range en radios del planeta; altitude y min_altitude
+# en unidades sobre el terreno; max_altitude en radios)
+orbit.range = 4
+orbit.suggest_range = 4
+orbit.accel = 6
+orbit.max_speed = 18
+orbit.climb = 5
+orbit.altitude = 3
+orbit.min_altitude = 2.5
+orbit.max_altitude = 3
+
+# Camara (fov en grados)
+camera.fov = 70
+camera.distance = 4
+camera.follow = 6
+camera.sensitivity = 0.005
+camera.min_distance = 1.5
+camera.max_distance = 40
+
+# LOD: tamano proyectado del radio en pixeles para pasar al siguiente nivel
+# (niveles 0-3 = icosfera subdividida 2, 3, 4, 5 veces)
+lod.px1 = 30
+lod.px2 = 80
+lod.px3 = 180
+
+# LOD de instancias: distancia a la camara en tamanos del objeto (distancia / escala).
+# Mas cerca que near -> malla alta; entre near y far -> *_lo; mas lejos -> no se dibuja.
+lod.instance_near = 22
+lod.instance_far = 70
+
+# Distribucion de objetos sobre la superficie (misma semilla -> mismas posiciones).
+# scatter.seed por defecto = seed. density multiplica todas las cantidades.
+# <planeta>.trees/.rocks/.towers/.crystals = cantidad objetivo de instancias.
+# *_size = escala base en unidades de mundo (cada instancia varia 0.6-1.4x).
+scatter.seed = 7
+scatter.density = 1.0
+scatter.tree_size = 0.9
+scatter.rock_size = 0.7
+scatter.tower_size = 1.0
+scatter.crystal_size = 0.8
+
+
+# F5 reconstruye planetas, mallas e instancias conservando el tiempo.
+# Claves por planeta: radius, orbit, orbit_speed (rad/s), spin_speed (rad/s),
+# phase (rad), mass (por defecto radius^3), amp (relieve en radios).
+
+# Sol: plasma animado
+sun.radius = 18
+sun.spin_speed = 0.05
+sun.intensity = 1.0
+
+# Ignis: volcanico, crestas escarpadas y valles de lava emisiva
+ignis.radius = 6
+ignis.orbit = 75
+ignis.orbit_speed = 0.045
+ignis.spin_speed = 0.3
+ignis.phase = 0.4
+ignis.amp = 0.10
+ignis.intensity = 1.0
+ignis.rocks = 80
+
+# Verdania: continentes y oceano plano (sea en unidades de altura, -1..1)
+verdania.radius = 8
+verdania.orbit = 125
+verdania.orbit_speed = 0.032
+verdania.spin_speed = 0.25
+verdania.phase = 2.3
+verdania.amp = 0.08
+verdania.sea = 0.0
+verdania.trees = 250
+verdania.rocks = 60
+
+# Glacia: hielo con mesetas en terrazas y fresnel
+glacia.radius = 7
+glacia.orbit = 185
+glacia.orbit_speed = 0.023
+glacia.spin_speed = 0.2
+glacia.phase = 4.1
+glacia.amp = 0.05
+glacia.crystals = 120
+
+# Aether: gigante gaseoso con bandas y anillo (ring_* en radios, tilt en grados)
+aether.radius = 14
+aether.orbit = 265
+aether.orbit_speed = 0.015
+aether.spin_speed = 0.35
+aether.phase = 1.1
+aether.intensity = 1.0
+aether.tilt = 26
+aether.ring_inner = 1.5
+aether.ring_outer = 2.4
+
+# Ruinas: rocoso con crateres geometricos y normal mapping de crateres finos
+ruinas.radius = 7.5
+ruinas.orbit = 350
+ruinas.orbit_speed = 0.01
+ruinas.spin_speed = 0.15
+ruinas.phase = 5.4
+ruinas.amp = 0.06
+ruinas.crater_count = 7
+ruinas.craters = 6.0
+ruinas.bump = 1.0
+ruinas.towers = 40
+ruinas.rocks = 80
