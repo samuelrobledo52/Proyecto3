@@ -1,0 +1,15 @@
+/target
+screenshot*.png
+*.blend1
+*.blend@
+*.tmp
+.claude/settings.local.json
+.claude/
+.claude-plugin/
+plugins/
+CLAUDE.md
+tools/sync_plugin.sh
+docs/PROGRESO.md
+docs/RUBRICA.md
+docs/enunciado.pdf
+*.pyc
