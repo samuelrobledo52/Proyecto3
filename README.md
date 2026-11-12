@@ -73,7 +73,7 @@ Gamepad (opcional): stick izquierdo para girar, gatillos para acelerar y frenar,
 
 ## Features del menú y dónde verlas
 
-Los minutos corresponden al guion del video (`docs/GUION_VIDEO.md`).
+
 
 | Feature | Pts | Dónde verla | Video | Código |
 |---|---|---|---|---|
