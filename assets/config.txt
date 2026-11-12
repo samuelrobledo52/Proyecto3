@@ -51,7 +51,7 @@ lod.px3 = 180
 
 # LOD de instancias: distancia a la camara en tamanos del objeto (distancia / escala).
 # Mas cerca que near -> malla alta; entre near y far -> *_lo; mas lejos -> no se dibuja.
-lod.instance_near = 22
+lod.instance_near = 16
 lod.instance_far = 70
 
 # Distribucion de objetos sobre la superficie (misma semilla -> mismas posiciones).

@@ -10,7 +10,7 @@ const SIZE: i32 = 18;
 const ROW: i32 = 22;
 const PAD: i32 = 12;
 
-const HELP: [(&str, &str); 18] = [
+const HELP: [(&str, &str); 21] = [
     ("W / S", "Acelerar / frenar"),
     ("A / D", "Girar"),
     ("Flechas", "Cabeceo y alabeo"),
@@ -25,8 +25,11 @@ const HELP: [(&str, &str); 18] = [
     ("L", "Niveles de detalle"),
     ("Tab", "Estadísticas"),
     ("F5", "Recargar config.txt"),
+    ("B", "Normal mapping en Ruinas"),
     ("H", "Ayuda"),
     ("Esc", "Salir"),
+    ("En órbita", "W/S velocidad  A/D rumbo"),
+    ("", "R/F altura  O salir"),
     ("Planetas", "1 Ignis  2 Verdania  3 Glacia"),
     ("", "4 Aether  5 Ruinas"),
 ];

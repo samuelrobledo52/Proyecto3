@@ -104,6 +104,7 @@ fn main() {
     let mut raster = Raster::new();
     let mut post = Post::new(RENDER_WIDTH, RENDER_HEIGHT);
     let mut hud = Hud::new(WINDOW_WIDTH, WINDOW_HEIGHT);
+    let mut bump = true;
 
     while !rl.window_should_close() {
         let frame_time = rl.get_frame_time();
@@ -137,6 +138,9 @@ fn main() {
         }
         if rl.is_key_pressed(KeyboardKey::KEY_TAB) {
             hud.stats = !hud.stats;
+        }
+        if rl.is_key_pressed(KeyboardKey::KEY_B) {
+            bump = !bump;
         }
         inst_view.horizon = pipeline.culling;
 
@@ -181,6 +185,7 @@ fn main() {
             lod_px: &lod_px,
             inst_view: &inst_view,
             models: &models,
+            bump,
         };
         let lod = submit_bodies(&mut pipeline, &scene, &uniforms);
         pipeline.submit(
@@ -221,7 +226,11 @@ fn main() {
             lod: inst_view.lod.then_some(lod),
             target: nearest(
                 &system,
-                ship.position,
+                if bench.is_some() {
+                    camera.position
+                } else {
+                    ship.position
+                },
                 &(projection * view),
                 camera.position,
             ),
@@ -246,6 +255,7 @@ struct Scene<'a> {
     lod_px: &'a [f32; 3],
     inst_view: &'a View,
     models: &'a [[Mesh; 2]],
+    bump: bool,
 }
 
 fn submit_bodies(pipeline: &mut Pipeline, scene: &Scene, uniforms: &Uniforms) -> usize {
@@ -283,7 +293,15 @@ fn submit_bodies(pipeline: &mut Pipeline, scene: &Scene, uniforms: &Uniforms) ->
         }
         pipeline.stats.lod_saved += lod_savings(&planet.lods, lod);
         let model = planet.model(camera.position);
-        pipeline.submit(&planet.lods[lod], &model, planet.shader, uniforms);
+        let shader = match planet.shader {
+            ShaderKind::Ruins { amp, craters, .. } if !scene.bump => ShaderKind::Ruins {
+                amp,
+                craters,
+                bump: 0.0,
+            },
+            shader => shader,
+        };
+        pipeline.submit(&planet.lods[lod], &model, shader, uniforms);
         if let Some(ring) = &planet.ring {
             pipeline.submit(&ring.mesh, &model, ring.shader, uniforms);
         }
@@ -373,7 +391,7 @@ fn report(system: &System, models: &[[Mesh; 2]]) {
 
 fn instance_view(config: &Config) -> View {
     View {
-        near: config.get("lod.instance_near", 22.0),
+        near: config.get("lod.instance_near", 16.0),
         far: config.get("lod.instance_far", 70.0),
         lod: true,
         horizon: true,
