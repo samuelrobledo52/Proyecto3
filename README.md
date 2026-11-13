@@ -8,7 +8,7 @@ Universidad del Valle de Guatemala, Gráficas por Computadora.
 
 ## Video
 
-> Enlace al video: _pendiente_
+> Enlace al video: https://youtu.be/ctcXOWJu3BI?si=EvG8yEYAX4jj_v_O
 
 ## Cómo correr
 
