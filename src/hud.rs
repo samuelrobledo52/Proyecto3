@@ -10,10 +10,12 @@ const SIZE: i32 = 18;
 const ROW: i32 = 22;
 const PAD: i32 = 12;
 
-const HELP: [(&str, &str); 21] = [
+const HELP: [(&str, &str); 24] = [
     ("W / S", "Acelerar / frenar"),
     ("A / D", "Girar"),
-    ("Flechas", "Cabeceo y alabeo"),
+    ("Arriba / Abajo", "Cabeceo"),
+    ("Q / E", "Alabeo izquierda / derecha"),
+    ("X", "Air roll (A / D alabean)"),
     ("Shift", "Turbo"),
     ("Clic derecho", "Mirar alrededor"),
     ("Rueda", "Distancia de cámara"),
@@ -30,6 +32,7 @@ const HELP: [(&str, &str); 21] = [
     ("Esc", "Salir"),
     ("En órbita", "W/S velocidad  A/D rumbo"),
     ("", "R/F altura  O salir"),
+    ("", "Cabeceo y alabeo solo inclinan"),
     ("Planetas", "1 Ignis  2 Verdania  3 Glacia"),
     ("", "4 Aether  5 Ruinas"),
 ];
@@ -47,6 +50,7 @@ pub struct Readout<'a> {
     pub altitude: f32,
     pub mode: String,
     pub gravity: bool,
+    pub air_roll: bool,
     pub prompt: Option<String>,
     pub stats: &'a Stats,
     pub culling: bool,
@@ -97,6 +101,7 @@ impl Hud {
             ("Altitud", format!("{:.1}", r.altitude)),
             ("Modo", r.mode.clone()),
             ("Gravedad", yes_no(r.gravity).to_string()),
+            ("Air roll", yes_no(r.air_roll).to_string()),
         ];
         panel(d, PAD, PAD, 250, rows.len() as i32 * ROW + PAD + 4);
         for (i, (label, value)) in rows.iter().enumerate() {

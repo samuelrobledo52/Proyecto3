@@ -16,6 +16,7 @@ const JUMP_KEYS: [KeyboardKey; 5] = [
 ];
 const DEADZONE: f32 = 0.15;
 const FLOOR_RATE: f32 = 25.0;
+const LEAN_RETURN: f32 = 4.0;
 
 pub struct FlightParams {
     accel: f32,
@@ -23,8 +24,9 @@ pub struct FlightParams {
     reverse: f32,
     max_speed: f32,
     turbo: f32,
-    turn_rate: f32,
-    turn_response: f32,
+    spin_max: Vec3,
+    spin_accel: f32,
+    spin_damping: f32,
     drag: f32,
     grip: f32,
     approach: f32,
@@ -51,8 +53,13 @@ impl From<&Config> for FlightParams {
             reverse: c.get("ship.reverse", 0.25),
             max_speed: c.get("ship.max_speed", 45.0),
             turbo: c.get("ship.turbo", 2.5),
-            turn_rate: c.get("ship.turn_rate", 1.4),
-            turn_response: c.get("ship.turn_response", 4.0),
+            spin_max: Vec3::new(
+                c.get("ship.pitch_rate", 2.2),
+                c.get("ship.yaw_rate", 1.8),
+                c.get("ship.roll_rate", 3.4),
+            ),
+            spin_accel: c.get("ship.spin_accel", 7.0),
+            spin_damping: c.get("ship.spin_damping", 6.0),
             drag: c.get("ship.drag", 0.25),
             grip: c.get("ship.grip", 1.2),
             approach: c.get("ship.approach", 1.5),
@@ -81,6 +88,7 @@ pub struct Input {
     pub roll: f32,
     pub lift: f32,
     pub turbo: bool,
+    pub roll_mode: bool,
     pub orbit: bool,
     pub gravity: bool,
     pub jump: Option<usize>,
@@ -97,7 +105,8 @@ impl Input {
             throttle: key(KeyboardKey::KEY_W) - key(KeyboardKey::KEY_S),
             pitch: key(KeyboardKey::KEY_UP) - key(KeyboardKey::KEY_DOWN),
             yaw: key(KeyboardKey::KEY_A) - key(KeyboardKey::KEY_D),
-            roll: key(KeyboardKey::KEY_RIGHT) - key(KeyboardKey::KEY_LEFT),
+            roll: key(KeyboardKey::KEY_E) - key(KeyboardKey::KEY_Q),
+            roll_mode: rl.is_key_pressed(KeyboardKey::KEY_X),
             lift: key(KeyboardKey::KEY_R) - key(KeyboardKey::KEY_F),
             turbo: rl.is_key_down(KeyboardKey::KEY_LEFT_SHIFT)
                 || rl.is_key_down(KeyboardKey::KEY_RIGHT_SHIFT),
@@ -181,6 +190,7 @@ pub struct Flight {
     pub params: FlightParams,
     mode: Mode,
     pub gravity: bool,
+    pub air_roll: bool,
     pub altitude: f32,
     pub suggestion: Option<usize>,
     notice: String,
@@ -195,6 +205,7 @@ impl Flight {
             params,
             mode: Mode::Cruise,
             gravity: true,
+            air_roll: false,
             altitude: 0.0,
             suggestion: None,
             notice: String::new(),
@@ -210,6 +221,9 @@ impl Flight {
         if input.gravity {
             self.gravity = !self.gravity;
         }
+        if input.roll_mode {
+            self.air_roll = !self.air_roll;
+        }
         if let Some(i) = input.jump {
             self.jump(ship, system, i, 3.5);
         }
@@ -218,32 +232,31 @@ impl Flight {
         }
 
         let p = &self.params;
-        let target = match self.mode {
-            Mode::Orbit(_) => Vec3::new(0.0, input.yaw * p.turn_rate, 0.0),
-            Mode::Cruise => Vec3::new(input.pitch, input.yaw, input.roll * 1.4) * p.turn_rate,
-        };
-        let before = ship.turn;
-        ship.turn += (target - ship.turn) * (1.0 - (-p.turn_response * dt).exp());
-        let spin = if p.turn_response > 1e-4 {
-            target * dt - (ship.turn - before) / p.turn_response
+        let command = if self.air_roll {
+            Vec3::new(input.pitch, 0.0, (input.roll - input.yaw).clamp(-1.0, 1.0))
         } else {
-            ship.turn * dt
+            Vec3::new(input.pitch, input.yaw, input.roll)
         };
+        let angle = steer(&mut ship.spin, command, p, dt);
 
         let lost = match &mut self.mode {
             Mode::Cruise => {
-                cruise(ship, input, system, p, self.gravity, spin, dt);
+                cruise(ship, input, system, p, self.gravity, angle, dt);
                 false
             }
             Mode::Orbit(state) => match system.planets.get(state.planet) {
                 Some(planet) => {
-                    orbit(state, ship, input, planet, p, spin.y, dt);
+                    orbit(state, ship, input, planet, p, angle.y, dt);
+                    let held = [command.x != 0.0, command.z != 0.0];
+                    let blend = 1.0 - (-LEAN_RETURN * dt).exp();
+                    ship.lean_by(angle.x, angle.z, held, blend);
                     false
                 }
                 None => true,
             },
         };
         if lost {
+            ship.settle();
             self.mode = Mode::Cruise;
         }
         collide(ship, system, &self.params);
@@ -283,7 +296,7 @@ impl Flight {
         let dir = (out + Vec3::y() * 0.35).normalize();
         ship.position = planet.position + dir * planet.radius * factor;
         ship.velocity = Vec3::zeros();
-        ship.turn = Vec3::zeros();
+        ship.spin = Vec3::zeros();
         ship.look_at(planet.position);
         self.mode = Mode::Cruise;
     }
@@ -306,8 +319,9 @@ impl Flight {
         (self.notice_time > 0.0).then_some(self.notice.as_str())
     }
 
-    fn toggle_orbit(&mut self, ship: &Ship, system: &System) {
+    fn toggle_orbit(&mut self, ship: &mut Ship, system: &System) {
         if let Mode::Orbit(_) = self.mode {
+            ship.settle();
             self.mode = Mode::Cruise;
             return;
         }
@@ -333,6 +347,33 @@ impl Flight {
 pub fn ground(planet: &Planet, dir: Vec3) -> f32 {
     let untilted = glm::rotate_x_vec3(&dir, -planet.tilt);
     planet.surface_height(glm::rotate_y_vec3(&untilted, -planet.spin))
+}
+
+fn steer(spin: &mut Vec3, command: Vec3, p: &FlightParams, dt: f32) -> Vec3 {
+    let damp = (-p.spin_damping * dt).exp();
+    let mut angle = Vec3::zeros();
+    for i in 0..3 {
+        let w0 = spin[i];
+        let c = command[i].clamp(-1.0, 1.0);
+        let top = p.spin_max[i];
+        if c == 0.0 {
+            spin[i] = w0 * damp;
+            angle[i] = if p.spin_damping > 1e-4 {
+                w0 * (1.0 - damp) / p.spin_damping
+            } else {
+                w0 * dt
+            };
+            continue;
+        }
+        let mut w1 = (w0 + c * top * p.spin_accel * dt).clamp(-top, top);
+        let limit = top * c.abs();
+        if w1.abs() > limit {
+            w1 = w1.signum() * (limit + (w1.abs() - limit) * damp);
+        }
+        spin[i] = w1;
+        angle[i] = (w0 + w1) * 0.5 * dt;
+    }
+    angle
 }
 
 fn closest(pos: Vec3, system: &System) -> Option<(usize, f32)> {

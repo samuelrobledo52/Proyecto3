@@ -1,6 +1,8 @@
+use std::f32::consts::{PI, TAU};
+
 use nalgebra_glm as glm;
 
-use crate::math::{Mat4, Vec3};
+use crate::math::{transform_point, Mat4, Vec3};
 
 pub struct Ship {
     pub position: Vec3,
@@ -8,7 +10,8 @@ pub struct Ship {
     pub forward: Vec3,
     pub up: Vec3,
     right: Vec3,
-    pub turn: Vec3,
+    pub spin: Vec3,
+    lean: [f32; 2],
     pub scale: f32,
 }
 
@@ -20,7 +23,8 @@ impl Ship {
             forward: -Vec3::z(),
             up: Vec3::y(),
             right: Vec3::x(),
-            turn: Vec3::zeros(),
+            spin: Vec3::zeros(),
+            lean: [0.0; 2],
             scale,
         }
     }
@@ -36,6 +40,7 @@ impl Ship {
         } else {
             Vec3::y()
         };
+        self.lean = [0.0; 2];
         self.orthonormalize();
     }
 
@@ -57,6 +62,42 @@ impl Ship {
         self.orthonormalize();
     }
 
+    pub fn lean_by(&mut self, pitch: f32, roll: f32, held: [bool; 2], blend: f32) {
+        self.lean[0] += pitch;
+        self.lean[1] += roll;
+        for (angle, held) in self.lean.iter_mut().zip(held) {
+            *angle = (*angle + PI).rem_euclid(TAU) - PI;
+            if !held {
+                *angle -= *angle * blend;
+            }
+        }
+    }
+
+    pub fn settle(&mut self) {
+        let (forward, up, right) = self.pose();
+        self.forward = forward;
+        self.up = up;
+        self.right = right;
+        self.lean = [0.0; 2];
+        self.orthonormalize();
+    }
+
+    pub fn nose(&self) -> Vec3 {
+        self.pose().0
+    }
+
+    fn pose(&self) -> (Vec3, Vec3, Vec3) {
+        let [pitch, roll] = self.lean;
+        if pitch == 0.0 && roll == 0.0 {
+            return (self.forward, self.up, self.right);
+        }
+        let forward = glm::rotate_vec3(&self.forward, pitch, &self.right);
+        let up = glm::rotate_vec3(&self.up, pitch, &self.right);
+        let up = glm::rotate_vec3(&up, roll, &forward);
+        let right = glm::rotate_vec3(&self.right, roll, &forward);
+        (forward, up, right)
+    }
+
     fn orthonormalize(&mut self) {
         self.forward = self.forward.normalize();
         let r = self.forward.cross(&self.up);
@@ -68,12 +109,17 @@ impl Ship {
         self.up = self.right.cross(&self.forward).normalize();
     }
 
+    pub fn point(&self, local: Vec3) -> Vec3 {
+        transform_point(&self.model(Vec3::zeros()), &local)
+    }
+
     pub fn model(&self, camera: Vec3) -> Mat4 {
+        let (forward, up, right) = self.pose();
         let s = self.scale;
         let t = self.position - camera;
-        let r = self.right * s;
-        let u = self.up * s;
-        let b = -self.forward * s;
+        let r = right * s;
+        let u = up * s;
+        let b = -forward * s;
         Mat4::new(
             r.x, u.x, b.x, t.x, r.y, u.y, b.y, t.y, r.z, u.z, b.z, t.z, 0.0, 0.0, 0.0, 1.0,
         )

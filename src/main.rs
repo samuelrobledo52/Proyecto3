@@ -24,6 +24,7 @@ use render::raster::Raster;
 use render::shaders::{ring_bands, ShaderKind, Uniforms};
 use ship::flight::{Flight, FlightParams, Input};
 use ship::ship::Ship;
+use ship::trail::Trail;
 use world::noise::Noise;
 use world::planet::Planet;
 use world::scatter::{census, sight, Pick, View, MODELS};
@@ -81,6 +82,7 @@ fn main() {
     let mut bench = bench_mode.then(|| Bench::new(&system));
 
     let mut flight = Flight::new(FlightParams::from(&config));
+    let mut trail = Trail::new();
     let mut ship = Ship::new(Vec3::zeros(), config.get("ship.scale", 0.3));
     let start = system
         .planets
@@ -156,6 +158,7 @@ fn main() {
             None => {
                 let input = Input::read(&rl);
                 flight.update(&mut ship, &input, &system, dt);
+                trail.update(&ship, input.turbo, flight.speed(&ship), dt);
                 camera.follow(&ship, &input, &system, dt);
             }
         }
@@ -197,6 +200,7 @@ fn main() {
             &uniforms,
         );
         raster.draw(&mut fb, &pipeline.tris, &uniforms);
+        trail.draw(&mut fb, &view, &projection, camera.position);
         let sun = sun_spot(
             &view,
             &projection,
@@ -220,6 +224,7 @@ fn main() {
             altitude: flight.altitude,
             mode: mode_text(&flight, &system),
             gravity: flight.gravity,
+            air_roll: flight.air_roll,
             prompt: prompt_text(&flight, &system),
             stats: &stats,
             culling: pipeline.culling,

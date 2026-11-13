@@ -9,6 +9,7 @@ use crate::ship::ship::Ship;
 use crate::world::system::System;
 
 const CLEARANCE: f32 = 0.3;
+const UP_FOLLOW: f32 = 3.0;
 
 pub struct Camera {
     pub position: Vec3,
@@ -73,9 +74,9 @@ impl Camera {
     pub fn snap(&mut self, ship: &Ship) {
         self.yaw = 0.0;
         self.pitch = 0.0;
+        self.up = ship.up;
         self.offset = self.target_offset(ship);
         self.position = ship.position + self.offset;
-        self.up = ship.up;
         self.aim(ship);
     }
 
@@ -95,6 +96,12 @@ impl Camera {
                 .clamp(self.min_distance, self.max_distance);
         }
 
+        self.up = toward(
+            self.up,
+            ship.up,
+            1.0 - (-UP_FOLLOW * dt).exp(),
+            ship.forward,
+        );
         let blend = 1.0 - (-self.follow * dt).exp();
         let target = self.target_offset(ship);
         if (target - self.offset).norm() > self.max_distance * 2.0 {
@@ -115,20 +122,13 @@ impl Camera {
             self.lift_out(system);
         }
         self.offset = self.position - ship.position;
-
-        let up = self.up + (ship.up - self.up) * (1.0 - (-4.0 * dt).exp());
-        self.up = if up.norm() > 1e-4 {
-            up.normalize()
-        } else {
-            ship.up
-        };
         self.aim(ship);
     }
 
     fn target_offset(&self, ship: &Ship) -> Vec3 {
-        let back = -ship.forward * self.distance + ship.up * (self.distance * 0.3);
-        let turned = glm::rotate_vec3(&back, self.yaw, &ship.up);
-        let axis = turned.cross(&ship.up);
+        let back = -ship.forward * self.distance + self.up * (self.distance * 0.3);
+        let turned = glm::rotate_vec3(&back, self.yaw, &self.up);
+        let axis = turned.cross(&self.up);
         if axis.norm() < 1e-4 {
             return turned;
         }
@@ -192,4 +192,17 @@ impl Camera {
         }
         pushed
     }
+}
+
+fn toward(from: Vec3, to: Vec3, blend: f32, spare: Vec3) -> Vec3 {
+    let cross = from.cross(&to);
+    let angle = cross.norm().atan2(from.dot(&to));
+    let axis = if cross.norm() > 1e-5 {
+        cross.normalize()
+    } else if angle > 1.0 {
+        spare.normalize()
+    } else {
+        return to;
+    };
+    glm::rotate_vec3(&from, angle * blend, &axis).normalize()
 }

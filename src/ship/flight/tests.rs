@@ -309,3 +309,95 @@ fn camera_stays_out() {
         assert!(low > 0.25 && near > 0.05);
     }
 }
+
+#[test]
+fn spin_loops_without_drift() {
+    let dt = 1.0 / 60.0;
+    let mut w = world();
+    w.flight.gravity = false;
+    w.ship.position = Vec3::new(0.0, 260.0, 0.0);
+    w.ship.look_at(Vec3::new(100.0, 260.0, 0.0));
+    let tumble = Input {
+        pitch: 1.0,
+        yaw: 1.0,
+        roll: -1.0,
+        ..Input::default()
+    };
+    let top = w.flight.params.spin_max;
+    let mut turned = 0.0;
+    let mut last = w.ship.forward;
+    for _ in 0..1200 {
+        w.step(&tumble, dt);
+        turned += last.dot(&w.ship.forward).clamp(-1.0, 1.0).acos();
+        last = w.ship.forward;
+        let s = &w.ship;
+        assert!((0..3).all(|i| s.spin[i].abs() <= top[i] + 1e-4));
+    }
+    let s = &w.ship;
+    let skew = (s.forward.norm() - 1.0)
+        .abs()
+        .max((s.up.norm() - 1.0).abs())
+        .max(s.forward.dot(&s.up).abs());
+    println!(
+        "giro libre: {:.1} vueltas de la punta, error de base {skew:.2e}",
+        turned / std::f32::consts::TAU
+    );
+    assert!(skew < 1e-4 && turned > 2.0 * std::f32::consts::TAU);
+    w.run(&Input::default(), 1.5, dt);
+    println!("giro libre: ω tras 1.5 s suelto {:.4}", w.ship.spin.norm());
+    assert!(w.ship.spin.norm() < 0.01);
+}
+
+#[test]
+fn orbit_lean_keeps_path() {
+    let dt = 1.0 / 60.0;
+    let mut calm = world();
+    let mut lean = world();
+    calm.enter(1, dt);
+    lean.enter(1, dt);
+    let tilt = Input {
+        throttle: 1.0,
+        pitch: 1.0,
+        roll: 1.0,
+        ..Input::default()
+    };
+    for _ in 0..180 {
+        calm.step(&throttle(1.0), dt);
+        lean.step(&tilt, dt);
+    }
+    let gap = (calm.ship.position - lean.ship.position).norm();
+    let tilted = lean.ship.nose().dot(&lean.ship.forward);
+    lean.run(&throttle(1.0), 2.0, dt);
+    let level = lean.ship.nose().dot(&lean.ship.forward);
+    println!("órbita inclinada: desvío {gap:.2e}, punta {tilted:.3} -> {level:.4}");
+    assert!(gap < 1e-4 && tilted < 0.99 && level > 0.999);
+}
+
+#[test]
+fn air_roll_toggle() {
+    let dt = 1.0 / 60.0;
+    let mut w = world();
+    w.flight.gravity = false;
+    w.ship.position = Vec3::new(0.0, 260.0, 0.0);
+    w.ship.look_at(Vec3::new(100.0, 260.0, 0.0));
+    let press = Input {
+        roll_mode: true,
+        ..Input::default()
+    };
+    let left = Input {
+        yaw: 1.0,
+        ..Input::default()
+    };
+    w.step(&press, dt);
+    assert!(w.flight.air_roll);
+    w.run(&left, 0.5, dt);
+    let rolled = w.ship.spin;
+    w.run(&Input::default(), 2.0, dt);
+    w.step(&press, dt);
+    assert!(!w.flight.air_roll);
+    w.run(&left, 0.5, dt);
+    let turned = w.ship.spin;
+    println!("air roll: con X ω {rolled:?}, sin X ω {turned:?}");
+    assert!(rolled.y.abs() < 1e-6 && rolled.z < -1.0);
+    assert!(turned.y > 1.0 && turned.z.abs() < 0.01);
+}

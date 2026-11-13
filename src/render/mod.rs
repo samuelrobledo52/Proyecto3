@@ -5,4 +5,5 @@ pub mod pipeline;
 pub mod post;
 pub mod raster;
 pub mod shaders;
+pub mod sprite;
 pub mod stats;

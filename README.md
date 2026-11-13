@@ -40,8 +40,10 @@ Los modelos de superficie se regeneran con Blender 5.2:
 | Tecla | Acción |
 |---|---|
 | W / S | Acelerar / frenar (y reversa lenta) |
-| A / D | Girar |
-| Flechas | Cabeceo y alabeo |
+| A / D | Girar (guiñada) |
+| Flecha arriba / abajo | Cabeceo |
+| Q / E | Alabeo a la izquierda / derecha |
+| X | Air roll sí / no: mientras está activo, A/D alabean en vez de girar (se ve en el HUD) |
 | Shift | Turbo |
 | Clic derecho + mouse | Mirar alrededor de la nave |
 | Rueda | Distancia de la cámara |
@@ -57,9 +59,11 @@ Los modelos de superficie se regeneran con Blender 5.2:
 | F5 | Recargar `assets/config.txt` y reconstruir el sistema |
 | Esc | Salir |
 
-En órbita: W/S cambian la velocidad orbital, A/D el rumbo sobre la superficie y R/F la altura.
+La rotación funciona por velocidad angular en los tres ejes locales de la nave: cada eje acelera mientras se mantiene su tecla hasta un máximo y se amortigua al soltarla, como un auto en el aire. La orientación es una base ortonormal que se re-ortonormaliza cada frame, así que se pueden dar vueltas completas en cualquier eje sin bloqueos. El empuje siempre sale hacia la punta de la nave, de modo que tras un giro se puede acelerar en cualquier dirección. La cámara de persecución interpola su vector "arriba" hacia el de la nave para seguir los giros sin marear.
 
-Gamepad (opcional): stick izquierdo para girar, gatillos para acelerar y frenar, A para órbita, B para turbo, LB/RB para el alabeo, cruceta para la altura y stick derecho para mirar.
+En órbita: W/S cambian la velocidad orbital, A/D el rumbo sobre la superficie y R/F la altura. El cabeceo y el alabeo solo inclinan la nave visualmente (vuelve a nivelarse al soltar) y no cambian la trayectoria; al salir de la órbita la nave conserva la inclinación que tenía. El air roll (X) se mantiene al entrar en órbita: A/D inclinan la nave en vez de cambiar el rumbo.
+
+Gamepad (opcional): stick izquierdo para girar y cabecear, gatillos para acelerar y frenar, A para órbita, B para turbo, LB/RB para el alabeo, cruceta para la altura y stick derecho para mirar.
 
 ## Configuración en vivo
 
